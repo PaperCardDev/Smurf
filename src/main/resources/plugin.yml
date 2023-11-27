@@ -1,16 +1,16 @@
-name: XiaoHao
+name: Smurf
 version: '${project.version}'
-main: cn.paper_card.xiaohao.XiaoHao
+main: cn.paper_card.smurf.ThePlugin
 api-version: '1.20'
 author: Paper99
 folia-supported: true
 
 commands:
-  xiaohao:
-    permission: xiaohao.command
+  smurf:
+    permission: smurf.command
 
 permissions:
-  xiaohao.command:
+  smurf.command:
     default: op
 
 depend:
