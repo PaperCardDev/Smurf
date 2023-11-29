@@ -1,6 +1,6 @@
 package cn.paper_card.smurf;
 
-import cn.paper_card.database.DatabaseApi;
+import cn.paper_card.database.api.DatabaseApi;
 import org.jetbrains.annotations.NotNull;
 
 import java.sql.Connection;
@@ -25,7 +25,7 @@ class MyConnection implements DatabaseApi.MySqlConnection {
     }
 
     @Override
-    public @NotNull Connection getRowConnection() throws SQLException {
+    public @NotNull Connection getRawConnection() throws SQLException {
         if (this.connection == null) {
             try {
                 Class.forName("com.mysql.cj.jdbc.Driver");
@@ -41,6 +41,7 @@ class MyConnection implements DatabaseApi.MySqlConnection {
         return this.connection;
     }
 
+
     @Override
     public int getConnectCount() {
         return this.count;
@@ -51,17 +52,18 @@ class MyConnection implements DatabaseApi.MySqlConnection {
     }
 
     @Override
-    public void checkClosedException(@NotNull SQLException e) throws SQLException {
-        final Connection c = this.connection;
-        this.connection = null;
-        if (c != null) c.close();
-    }
-
-    void close() throws SQLException {
+    public void close() throws SQLException {
         final Connection c = this.connection;
         if (c == null) return;
 
         this.connection = null;
         c.close();
+    }
+
+    @Override
+    public void handleException(@NotNull SQLException e) throws SQLException {
+        final Connection c = this.connection;
+        this.connection = null;
+        if (c != null) c.close();
     }
 }

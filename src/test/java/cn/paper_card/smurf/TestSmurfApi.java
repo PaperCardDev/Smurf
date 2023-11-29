@@ -44,8 +44,6 @@ public class TestSmurfApi {
                 final boolean removed = api.removeSmurf(i.mainUuid(), i.smurfUuid());
                 Assert.assertTrue(removed);
             }
-
-
         }
 
         { // 删除
@@ -76,6 +74,32 @@ public class TestSmurfApi {
         // 删除
         final boolean removed = api.removeSmurf(info.mainUuid(), info.smurfUuid());
         Assert.assertTrue(removed);
+
+        api.close();
+    }
+
+    @Test
+    public void test3() throws SQLException {
+        final SmurfApiImpl api = new SmurfApiImpl(connection);
+
+        final SmurfApi.SmurfInfo info = new SmurfApi.SmurfInfo(UUID.randomUUID(), "Paper99",
+                UUID.randomUUID(), "Paper100",
+                System.currentTimeMillis(), "Test");
+
+        try {
+            api.addSmurf(info);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } catch (SmurfApi.IsAlreadySmurf e) {
+            System.out.println(e.getSmurfInfo());
+            throw new RuntimeException(e);
+        } catch (SmurfApi.TheSmurfIsMain e) {
+            System.out.println(e.getSmurfInfo());
+            throw new RuntimeException(e);
+        } catch (SmurfApi.TheSmurfIsSelf e) {
+            System.out.println(e.getClass().getSimpleName());
+            throw new RuntimeException(e);
+        }
 
         api.close();
     }

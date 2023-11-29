@@ -1,7 +1,6 @@
 package cn.paper_card.smurf;
 
-
-import cn.paper_card.database.DatabaseConnection;
+import cn.paper_card.database.api.Util;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -34,7 +33,7 @@ class Table {
     }
 
     private void create() throws SQLException {
-        DatabaseConnection.createTable(this.connection, """
+        Util.executeSQL(this.connection, """
                 CREATE TABLE IF NOT EXISTS %s (
                     m_uid1 BIGINT NOT NULL,
                     m_uid2 BIGINT NOT NULL,
@@ -49,7 +48,7 @@ class Table {
     }
 
     void close() throws SQLException {
-        DatabaseConnection.closeAllStatements(this.getClass(), this);
+        Util.closeAllStatements(this.getClass(), this);
     }
 
     private @NotNull PreparedStatement getStatementInsert() throws SQLException {

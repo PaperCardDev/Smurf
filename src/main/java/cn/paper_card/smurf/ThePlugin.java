@@ -1,22 +1,26 @@
 package cn.paper_card.smurf;
 
-import cn.paper_card.bilibili_bind.BilibiliBindApi;
-import cn.paper_card.database.DatabaseApi;
+import cn.paper_card.bilibili_bind.api.BilibiliBindApi;
+import cn.paper_card.database.api.DatabaseApi;
 import com.github.Anon8281.universalScheduler.UniversalScheduler;
 import com.github.Anon8281.universalScheduler.scheduling.schedulers.TaskScheduler;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.permissions.Permission;
-import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.sql.SQLException;
+import java.text.SimpleDateFormat;
 import java.util.LinkedList;
-import java.util.NoSuchElementException;
 import java.util.UUID;
 
 public class ThePlugin extends JavaPlugin {
@@ -24,8 +28,12 @@ public class ThePlugin extends JavaPlugin {
 
     private final @NotNull TaskScheduler taskScheduler;
 
-    public ThePlugin() {
+    private SmurfApiImpl smurfApi;
 
+    private BilibiliBindApi bilibiliBindApi = null;
+
+
+    public ThePlugin() {
         this.prefix = Component.text()
                 .append(Component.text("[").color(NamedTextColor.GRAY))
                 .append(Component.text("小号管理").color(NamedTextColor.DARK_AQUA))
@@ -35,18 +43,50 @@ public class ThePlugin extends JavaPlugin {
         this.taskScheduler = UniversalScheduler.getScheduler(this);
     }
 
-    private @NotNull DatabaseApi getDatabaseApi0() {
-        final Plugin plugin = this.getServer().getPluginManager().getPlugin("Database");
-        if (plugin instanceof DatabaseApi api) {
-            return api;
-        } else throw new NoSuchElementException("Database插件未安装");
+    void handleException(@NotNull Exception e) {
+        this.getLogger().throwing(ThePlugin.class.getSimpleName(), "handleException", e);
     }
 
-    @Nullable BilibiliBindApi getBilibiliBindApi() {
-        final Plugin plugin = this.getServer().getPluginManager().getPlugin("BilibiliBind");
-        if (plugin instanceof BilibiliBindApi api) {
-            return api;
-        } else return null;
+    @Override
+    public void onLoad() {
+
+        final DatabaseApi api = this.getServer().getServicesManager().load(DatabaseApi.class);
+        if (api == null) throw new RuntimeException("无法连接到" + DatabaseApi.class.getSimpleName());
+
+        this.smurfApi = new SmurfApiImpl(api.getRemoteMySQL().getConnectionImportant());
+
+        this.getServer().getServicesManager().register(SmurfApi.class, this.smurfApi, this, ServicePriority.Highest);
+    }
+
+    @Override
+    public void onEnable() {
+        // 获取BilibiliAPI
+
+        final String name = BilibiliBindApi.class.getSimpleName();
+        this.bilibiliBindApi = this.getServer().getServicesManager().load(BilibiliBindApi.class);
+        if (bilibiliBindApi == null) {
+            this.getLogger().warning("无法连接到" + name);
+        } else {
+            this.getLogger().info("已连接到" + name);
+        }
+
+        new TheCommand(this);
+    }
+
+    @Override
+    public void onDisable() {
+        try {
+            this.smurfApi.close();
+        } catch (SQLException e) {
+            this.handleException(e);
+        }
+        this.taskScheduler.cancelTasks(this);
+        this.getServer().getServicesManager().unregisterAll(this);
+    }
+
+
+    @NotNull SmurfApiImpl getSmurfApi() {
+        return this.smurfApi;
     }
 
     @NotNull Permission addPermission(@NotNull String name) {
@@ -61,6 +101,20 @@ public class ThePlugin extends JavaPlugin {
                 .appendSpace()
                 .append(Component.text(error).color(NamedTextColor.RED))
                 .build());
+    }
+
+    void sendException(@NotNull CommandSender sender, @NotNull Exception e) {
+        final TextComponent.Builder text = Component.text();
+        text.append(this.prefix);
+        text.appendSpace();
+        text.append(Component.text("==== 异常信息 ====").color(NamedTextColor.DARK_RED));
+
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            text.appendNewline();
+            text.append(Component.text(t.toString()).color(NamedTextColor.RED));
+        }
+
+        sender.sendMessage(text.build());
     }
 
     void sendWarning(@NotNull CommandSender sender, @NotNull String warning) {
@@ -79,9 +133,69 @@ public class ThePlugin extends JavaPlugin {
                 .build());
     }
 
+    void sendInfo(@NotNull CommandSender sender, @NotNull SmurfApi.SmurfInfo info) {
+        final TextComponent.Builder text = Component.text();
+        text.append(Component.text("==== 小号信息 ===="));
+
+        final NamedTextColor color = NamedTextColor.DARK_AQUA;
+
+        // 小号
+        text.appendNewline();
+        text.append(Component.text("小号：").color(color));
+        text.append(Component.text(info.smurfName())
+                .color(NamedTextColor.GREEN).decorate(TextDecoration.UNDERLINED)
+                .clickEvent(ClickEvent.copyToClipboard(info.smurfName()))
+                .hoverEvent(HoverEvent.showText(Component.text("点击复制")))
+        );
+
+        final String smurfUuid = info.smurfUuid().toString();
+        text.append(Component.text(" ("));
+        text.append(Component.text(smurfUuid)
+                .color(NamedTextColor.GREEN).decorate(TextDecoration.UNDERLINED)
+                .clickEvent(ClickEvent.copyToClipboard(smurfUuid))
+                .hoverEvent(HoverEvent.showText(Component.text("点击复制")))
+        );
+        text.append(Component.text(")"));
+
+        // 大号
+        text.appendNewline();
+        text.append(Component.text("大号：").color(color));
+        text.append(Component.text(info.mainName())
+                .color(NamedTextColor.GREEN).decorate(TextDecoration.UNDERLINED)
+                .clickEvent(ClickEvent.copyToClipboard(info.mainName()))
+                .hoverEvent(HoverEvent.showText(Component.text("点击复制")))
+        );
+
+        final String mainUuid = info.mainUuid().toString();
+        text.append(Component.text(" ("));
+        text.append(Component.text(mainUuid)
+                .color(NamedTextColor.GREEN).decorate(TextDecoration.UNDERLINED)
+                .clickEvent(ClickEvent.copyToClipboard(mainUuid))
+                .hoverEvent(HoverEvent.showText(Component.text("点击复制")))
+        );
+        text.append(Component.text(")"));
+
+        // 备注
+        text.appendNewline();
+        text.append(Component.text("备注：").color(color));
+        text.append(Component.text(info.remark()));
+
+        // 时间
+        text.appendNewline();
+        final String datetime = new SimpleDateFormat("yyyy年MM月dd日_HH:mm:ss").format(info.time());
+        text.append(Component.text("时间：").color(color));
+        text.append(Component.text(datetime));
+
+        sender.sendMessage(text.build());
+    }
+
 
     @NotNull TaskScheduler getTaskScheduler() {
         return this.taskScheduler;
+    }
+
+    @Nullable BilibiliBindApi getBilibiliBindApi() {
+        return this.bilibiliBindApi;
     }
 
     @Nullable UUID parseArgPlayer(@NotNull String arg) {

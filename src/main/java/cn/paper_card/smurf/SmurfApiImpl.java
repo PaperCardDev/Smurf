@@ -1,6 +1,7 @@
 package cn.paper_card.smurf;
 
-import cn.paper_card.database.DatabaseApi;
+
+import cn.paper_card.database.api.DatabaseApi;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -21,7 +22,7 @@ class SmurfApiImpl implements SmurfApi {
     }
 
     private @NotNull Table getTable() throws SQLException {
-        final Connection newCon = this.mySqlConnection.getRowConnection();
+        final Connection newCon = this.mySqlConnection.getRawConnection();
 
         if (this.connection != null && this.connection == newCon) return this.table;
 
@@ -103,7 +104,7 @@ class SmurfApiImpl implements SmurfApi {
 
             } catch (SQLException e) {
                 try {
-                    this.mySqlConnection.checkClosedException(e);
+                    this.mySqlConnection.handleException(e);
                 } catch (SQLException ignored) {
                 }
                 throw e;
@@ -125,7 +126,7 @@ class SmurfApiImpl implements SmurfApi {
 
             } catch (SQLException e) {
                 try {
-                    this.mySqlConnection.checkClosedException(e);
+                    this.mySqlConnection.handleException(e);
                 } catch (SQLException ignored) {
                 }
                 throw e;
@@ -145,7 +146,7 @@ class SmurfApiImpl implements SmurfApi {
                 return info;
             } catch (SQLException e) {
                 try {
-                    this.mySqlConnection.checkClosedException(e);
+                    this.mySqlConnection.handleException(e);
                 } catch (SQLException ignored) {
                 }
                 throw e;
@@ -163,7 +164,7 @@ class SmurfApiImpl implements SmurfApi {
                 return list;
             } catch (SQLException e) {
                 try {
-                    this.mySqlConnection.checkClosedException(e);
+                    this.mySqlConnection.handleException(e);
                 } catch (SQLException ignored) {
                 }
                 throw e;
