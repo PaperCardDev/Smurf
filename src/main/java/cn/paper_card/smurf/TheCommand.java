@@ -3,6 +3,10 @@ package cn.paper_card.smurf;
 import cn.paper_card.bilibili_bind.api.BilibiliBindApi;
 import cn.paper_card.bilibili_bind.api.BindCodeInfo;
 import cn.paper_card.mc_command.TheMcCommand;
+import cn.paper_card.smurf.api.SmurfInfo;
+import cn.paper_card.smurf.api.exception.AlreadyIsSmurfException;
+import cn.paper_card.smurf.api.exception.SmurfIsMainException;
+import cn.paper_card.smurf.api.exception.SmurfIsSelfException;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.PluginCommand;
@@ -94,10 +98,10 @@ class TheCommand extends TheMcCommand.HasSub {
 
                 // 检查自己的小号数量
 
-                final List<SmurfApi.SmurfInfo> list;
+                final List<SmurfInfo> list;
 
                 try {
-                    list = plugin.getSmurfApi().queryByMainUuid(player.getUniqueId(), 1, 0);
+                    list = plugin.getSmurfApi().getSmurfService().queryByMainUuid(player.getUniqueId(), 1, 0);
                 } catch (SQLException e) {
                     plugin.handleException(e);
                     plugin.sendException(commandSender, e);
@@ -126,20 +130,20 @@ class TheCommand extends TheMcCommand.HasSub {
                 }
 
                 // 添加
-                final SmurfApi.SmurfInfo info = new SmurfApi.SmurfInfo(
+                final SmurfInfo info = new SmurfInfo(
                         player.getUniqueId(), player.getName(),
                         bindCodeInfo.uuid(), bindCodeInfo.name(),
                         System.currentTimeMillis(), "bilibili绑定验证码添加"
                 );
 
                 try {
-                    plugin.getSmurfApi().addSmurf(info);
-                } catch (SmurfApi.IsAlreadySmurf | SmurfApi.TheSmurfIsSelf | SmurfApi.TheSmurfIsMain e) {
-                    plugin.sendWarning(commandSender, e.getMessage());
-                    return;
+                    plugin.getSmurfApi().getSmurfService().addSmurf(info);
                 } catch (SQLException e) {
                     plugin.handleException(e);
                     plugin.sendException(commandSender, e);
+                    return;
+                } catch (SmurfIsMainException | SmurfIsSelfException | AlreadyIsSmurfException e) {
+                    plugin.sendWarning(commandSender, e.getMessage());
                     return;
                 }
 
@@ -211,19 +215,19 @@ class TheCommand extends TheMcCommand.HasSub {
                 final String mainName = plugin.getPlayerNameOrNull(main);
                 final String smurfName = plugin.getPlayerNameOrNull(smurf);
 
-                final SmurfApi.SmurfInfo info = new SmurfApi.SmurfInfo(
+                final SmurfInfo info = new SmurfInfo(
                         main, mainName, smurf, smurfName,
                         System.currentTimeMillis(), "add执行添加，%s执行".formatted(commandSender.getName())
                 );
 
                 try {
-                    plugin.getSmurfApi().addSmurf(info);
-                } catch (SmurfApi.IsAlreadySmurf | SmurfApi.TheSmurfIsSelf | SmurfApi.TheSmurfIsMain e) {
-                    plugin.sendWarning(commandSender, e.getMessage());
-                    return;
+                    plugin.getSmurfApi().getSmurfService().addSmurf(info);
                 } catch (SQLException e) {
                     plugin.handleException(e);
                     plugin.sendException(commandSender, e);
+                    return;
+                } catch (SmurfIsMainException | SmurfIsSelfException | AlreadyIsSmurfException e) {
+                    plugin.sendWarning(commandSender, e.getMessage());
                     return;
                 }
 
@@ -285,9 +289,9 @@ class TheCommand extends TheMcCommand.HasSub {
 
             plugin.getTaskScheduler().runTaskAsynchronously(() -> {
                 // 先查询
-                final SmurfApi.SmurfInfo info;
+                final SmurfInfo info;
                 try {
-                    info = plugin.getSmurfApi().queryBySmurfUuid(uuid);
+                    info = plugin.getSmurfApi().getSmurfService().queryBySmurfUuid(uuid);
                 } catch (SQLException e) {
                     plugin.handleException(e);
                     plugin.sendException(commandSender, e);
@@ -303,7 +307,7 @@ class TheCommand extends TheMcCommand.HasSub {
                 final boolean removed;
 
                 try {
-                    removed = plugin.getSmurfApi().removeSmurf(info.mainUuid(), info.smurfUuid());
+                    removed = plugin.getSmurfApi().getSmurfService().removeSmurf(info.mainUuid(), info.smurfUuid());
                 } catch (SQLException e) {
                     plugin.handleException(e);
                     plugin.sendException(commandSender, e);
@@ -382,9 +386,9 @@ class TheCommand extends TheMcCommand.HasSub {
                 final String name = isSelf ? "你" : "该玩家";
 
                 // 查询是不是小号
-                final SmurfApi.SmurfInfo info;
+                final SmurfInfo info;
                 try {
-                    info = plugin.getSmurfApi().queryBySmurfUuid(uuid);
+                    info = plugin.getSmurfApi().getSmurfService().queryBySmurfUuid(uuid);
                 } catch (SQLException e) {
                     plugin.handleException(e);
                     plugin.sendException(commandSender, e);
@@ -398,10 +402,10 @@ class TheCommand extends TheMcCommand.HasSub {
                 }
 
                 // 不是小号
-                final List<SmurfApi.SmurfInfo> list;
+                final List<SmurfInfo> list;
 
                 try {
-                    list = plugin.getSmurfApi().queryByMainUuid(uuid, 4, 0);
+                    list = plugin.getSmurfApi().getSmurfService().queryByMainUuid(uuid, 4, 0);
                 } catch (SQLException e) {
                     plugin.handleException(e);
                     plugin.sendException(commandSender, e);
@@ -415,7 +419,7 @@ class TheCommand extends TheMcCommand.HasSub {
                 }
 
                 plugin.sendInfo(commandSender, name + "有若干个小号，最多只列出4个，TODO：看到此条消息叫腐竹去完善一下");
-                for (final SmurfApi.SmurfInfo smurfInfo : list) {
+                for (final SmurfInfo smurfInfo : list) {
                     plugin.sendInfo(commandSender, smurfInfo);
                 }
             });

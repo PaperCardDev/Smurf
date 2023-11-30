@@ -1,6 +1,7 @@
 package cn.paper_card.smurf;
 
 import cn.paper_card.database.api.Util;
+import cn.paper_card.smurf.api.SmurfInfo;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -85,7 +86,7 @@ class Table {
         return this.statementDelete;
     }
 
-    private @NotNull SmurfApi.SmurfInfo parseRow(@NotNull ResultSet resultSet) throws SQLException {
+    private @NotNull SmurfInfo parseRow(@NotNull ResultSet resultSet) throws SQLException {
         final long mUid1 = resultSet.getLong(1);
         final long mUid2 = resultSet.getLong(2);
         final String mName = resultSet.getString(3);
@@ -97,14 +98,14 @@ class Table {
         final long cTime = resultSet.getLong(7);
         final String remark = resultSet.getString(8);
 
-        return new SmurfApi.SmurfInfo(new UUID(mUid1, mUid2), mName,
+        return new SmurfInfo(new UUID(mUid1, mUid2), mName,
                 new UUID(sUid1, sUid2), sName,
                 cTime, remark);
     }
 
-    private @Nullable SmurfApi.SmurfInfo parseOne(@NotNull ResultSet resultSet) throws SQLException {
+    private @Nullable SmurfInfo parseOne(@NotNull ResultSet resultSet) throws SQLException {
 
-        final SmurfApi.SmurfInfo info;
+        final SmurfInfo info;
 
         try {
             if (resultSet.next()) info = this.parseRow(resultSet);
@@ -124,12 +125,12 @@ class Table {
         return info;
     }
 
-    private @NotNull List<SmurfApi.SmurfInfo> parseAll(@NotNull ResultSet resultSet) throws SQLException {
-        final List<SmurfApi.SmurfInfo> list = new LinkedList<>();
+    private @NotNull List<SmurfInfo> parseAll(@NotNull ResultSet resultSet) throws SQLException {
+        final List<SmurfInfo> list = new LinkedList<>();
 
         try {
             while (resultSet.next()) {
-                final SmurfApi.SmurfInfo info = this.parseRow(resultSet);
+                final SmurfInfo info = this.parseRow(resultSet);
                 list.add(info);
             }
         } catch (SQLException e) {
@@ -146,7 +147,7 @@ class Table {
 
     }
 
-    int insert(@NotNull SmurfApi.SmurfInfo info) throws SQLException {
+    int insert(@NotNull SmurfInfo info) throws SQLException {
         final PreparedStatement ps = this.getStatementInsert();
 
         ps.setLong(1, info.mainUuid().getMostSignificantBits());
@@ -163,7 +164,7 @@ class Table {
         return ps.executeUpdate();
     }
 
-    @Nullable SmurfApi.SmurfInfo queryBySmurfUuid(@NotNull UUID uuid) throws SQLException {
+    @Nullable SmurfInfo queryBySmurfUuid(@NotNull UUID uuid) throws SQLException {
         final PreparedStatement ps = this.getStatementQueryBySmurfUuid();
         ps.setLong(1, uuid.getMostSignificantBits());
         ps.setLong(2, uuid.getLeastSignificantBits());
@@ -172,7 +173,7 @@ class Table {
         return this.parseOne(resultSet);
     }
 
-    @NotNull List<SmurfApi.SmurfInfo> queryByMainUuidWithPage(@NotNull UUID uuid, int limit, int offset) throws SQLException {
+    @NotNull List<SmurfInfo> queryByMainUuidWithPage(@NotNull UUID uuid, int limit, int offset) throws SQLException {
         final PreparedStatement ps = this.getStatementQueryByMainUuidWithPage();
         ps.setLong(1, uuid.getMostSignificantBits());
         ps.setLong(2, uuid.getLeastSignificantBits());

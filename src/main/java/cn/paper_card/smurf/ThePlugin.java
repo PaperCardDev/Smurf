@@ -2,6 +2,8 @@ package cn.paper_card.smurf;
 
 import cn.paper_card.bilibili_bind.api.BilibiliBindApi;
 import cn.paper_card.database.api.DatabaseApi;
+import cn.paper_card.smurf.api.SmurfApi;
+import cn.paper_card.smurf.api.SmurfInfo;
 import com.github.Anon8281.universalScheduler.UniversalScheduler;
 import com.github.Anon8281.universalScheduler.scheduling.schedulers.TaskScheduler;
 import net.kyori.adventure.text.Component;
@@ -28,7 +30,7 @@ public class ThePlugin extends JavaPlugin {
 
     private final @NotNull TaskScheduler taskScheduler;
 
-    private SmurfApiImpl smurfApi;
+    private SmurfApiImpl smurfApi = null;
 
     private BilibiliBindApi bilibiliBindApi = null;
 
@@ -55,6 +57,7 @@ public class ThePlugin extends JavaPlugin {
 
         this.smurfApi = new SmurfApiImpl(api.getRemoteMySQL().getConnectionImportant());
 
+        this.getSLF4JLogger().info("注册%s...".formatted(SmurfApi.class.getSimpleName()));
         this.getServer().getServicesManager().register(SmurfApi.class, this.smurfApi, this, ServicePriority.Highest);
     }
 
@@ -76,11 +79,13 @@ public class ThePlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         try {
-            this.smurfApi.close();
+            this.smurfApi.getSmurfService().close();
         } catch (SQLException e) {
             this.handleException(e);
         }
+
         this.taskScheduler.cancelTasks(this);
+
         this.getServer().getServicesManager().unregisterAll(this);
     }
 
@@ -133,7 +138,7 @@ public class ThePlugin extends JavaPlugin {
                 .build());
     }
 
-    void sendInfo(@NotNull CommandSender sender, @NotNull SmurfApi.SmurfInfo info) {
+    void sendInfo(@NotNull CommandSender sender, @NotNull SmurfInfo info) {
         final TextComponent.Builder text = Component.text();
         text.append(Component.text("==== 小号信息 ===="));
 
